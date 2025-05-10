@@ -1,10 +1,20 @@
 # Exercise 1
 
 ## Exercise 1(a)
+
+See `1a.cu`.
+
 ## Exercise 1(b)
+
+See `1b.cu`.
+
 ## Exercise 1(c)
 
+Performance will depend on the shape of the output matrix. If it has many rows and few columns, the first kernel will be better. If it has few rows and many columns, the second kernel will be better.
+
 # Exercise 2
+
+See `2.cu`.
 
 # Exercise 3
 
