@@ -8,12 +8,12 @@
 // C is n x m
 __global__ void ker_matmul(const float *A, const float *B, float *C, int n,
                            int k, int m) {
-  int row = RM_IDX(blockIdx.x, threadIdx.x, blockDim.x);
-  if (row >= n) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+  if (col >= m) {
     return;
   }
 
-  for (int col = 0; col < m; ++col) {
+  for (int row = 0; row < n; ++row) {
     float dot = 0.0;
     for (int j = 0; j < k; ++j) {
       dot += A[RM_IDX(row, j, k)] * B[RM_IDX(j, col, m)];
