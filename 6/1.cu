@@ -5,7 +5,8 @@
 // B is n x n
 // C is n x n
 
-#define TILE_WIDTH 32
+#define TILE_WIDTH 32 
+#define RM(row, col, width) ((row) * (width) + (col))
 
 __global__ void ker_matmul(const float *A, const float *B, float *C,
                            int width) {
@@ -22,20 +23,14 @@ __global__ void ker_matmul(const float *A, const float *B, float *C,
   const int tile_row = blockIdx.y;
   const int elem_col = threadIdx.x;
 
-  const int tile_row_off = tile_row * TILE_WIDTH;
-  const int tile_col_off = tile_col * TILE_WIDTH * TILE_WIDTH;
-  const int elem_col_off = elem_col;
-
   for (int p = 0; p < width / TILE_WIDTH; ++p) {
     // Copy data into At and Bt.
     // At is the tile at (row, p)
     // Bt is the tile at (p, col)
     for (int elem_row = 0; elem_row < TILE_WIDTH; ++elem_row) {
-      const int elem_row_off = elem_row * TILE_WIDTH;
-      At[elem_row][elem_col] = A[tile_row_off + (p * TILE_WIDTH * TILE_WIDTH) +
-                                 elem_row_off + elem_col_off];
-      Bt[elem_row][elem_col] = B[(p * TILE_WIDTH * TILE_WIDTH) + tile_col_off +
-                                 elem_row_off + elem_col_off];
+      int idx = RM(tile_row * TILE_WIDTH + elem_row, p * TILE_WIDTH + elem_col, width);
+      At[elem_row][elem_col] = A[idx];
+      Bt[elem_row][elem_col] = B[RM(p * TILE_WIDTH + elem_row, tile_col * TILE_WIDTH + elem_col, width)];
     }
     __syncthreads();
 
@@ -49,8 +44,7 @@ __global__ void ker_matmul(const float *A, const float *B, float *C,
   }
 
   for (int elem_row = 0; elem_row < TILE_WIDTH; ++elem_row) {
-    const int elem_row_off = elem_row * TILE_WIDTH;
-    C[tile_row_off + tile_col_off + elem_row_off + elem_col_off] =
+    C[RM(tile_row * TILE_WIDTH + elem_row, tile_col * TILE_WIDTH + elem_col, width)] =
         acc[elem_row];
   }
 }
@@ -66,7 +60,7 @@ void matmul(const float *A, const float *B, float *C, int width) {
   cudaMemcpy(B_d, B, width * width * sizeof(float), cudaMemcpyHostToDevice);
   cudaMemcpy(C_d, C, width * width * sizeof(float), cudaMemcpyHostToDevice);
 
-  const dim3 gridDim(width, width / TILE_WIDTH, 1);
+  const dim3 gridDim(width / TILE_WIDTH, width / TILE_WIDTH, 1);
   const dim3 blockDim(TILE_WIDTH, 1, 1);
   ker_matmul<<<gridDim, blockDim>>>(A_d, B_d, C_d, width);
 
@@ -86,21 +80,21 @@ int main(int argc, char *argv[]) {
 
   for (int i = 0; i < width; ++i) {
     for (int j = 0; j < width; ++j) {
-      A[i][j] = 2.0 * i * width - 3.0 * j;
-      B[i][j] = -j * width + 5.0 * i;
+      A[i][j] = (2.0 * i * width - 3.0 * j) / (width * width);
+      B[i][j] = (-j * width + 5.0 * i) / (width * width);
       C[i][j] = 0.0;
     }
   }
 
-  matmul(A, B, C, width);
+  matmul((const float*) A, (const float*) B, (float*) C, width);
 
   for (int i = 0; i < width; ++i) {
     for (int j = 0; j < width; ++j) {
-      int acc = 0.0;
+      float acc = 0.0;
       for (int k = 0; k < width; ++k) {
         acc += A[i][k] * B[k][j];
       }
-      printf("%g %g", C[i][j], acc);
+      // printf("C[%d][%d] == %f == %f\n", i, j, C[i][j], acc);
       assert(abs(C[i][j] - acc) < 0.001);
     }
   }
