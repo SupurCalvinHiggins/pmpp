@@ -5,7 +5,7 @@
 // B is n x n
 // C is n x n
 
-#define TILE_WIDTH 32 
+#define TILE_WIDTH 32
 #define RM(row, col, width) ((row) * (width) + (col))
 
 __global__ void ker_matmul(const float *A, const float *B, float *C,
@@ -28,9 +28,11 @@ __global__ void ker_matmul(const float *A, const float *B, float *C,
     // At is the tile at (row, p)
     // Bt is the tile at (p, col)
     for (int elem_row = 0; elem_row < TILE_WIDTH; ++elem_row) {
-      int idx = RM(tile_row * TILE_WIDTH + elem_row, p * TILE_WIDTH + elem_col, width);
+      int idx = RM(tile_row * TILE_WIDTH + elem_row, p * TILE_WIDTH + elem_col,
+                   width);
       At[elem_row][elem_col] = A[idx];
-      Bt[elem_row][elem_col] = B[RM(p * TILE_WIDTH + elem_row, tile_col * TILE_WIDTH + elem_col, width)];
+      Bt[elem_row][elem_col] = B[RM(p * TILE_WIDTH + elem_row,
+                                    tile_col * TILE_WIDTH + elem_col, width)];
     }
     __syncthreads();
 
@@ -44,8 +46,8 @@ __global__ void ker_matmul(const float *A, const float *B, float *C,
   }
 
   for (int elem_row = 0; elem_row < TILE_WIDTH; ++elem_row) {
-    C[RM(tile_row * TILE_WIDTH + elem_row, tile_col * TILE_WIDTH + elem_col, width)] =
-        acc[elem_row];
+    C[RM(tile_row * TILE_WIDTH + elem_row, tile_col * TILE_WIDTH + elem_col,
+         width)] = acc[elem_row];
   }
 }
 
@@ -86,7 +88,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  matmul((const float*) A, (const float*) B, (float*) C, width);
+  matmul((const float *)A, (const float *)B, (float *)C, width);
 
   for (int i = 0; i < width; ++i) {
     for (int j = 0; j < width; ++j) {
